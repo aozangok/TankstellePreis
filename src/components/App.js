@@ -1,7 +1,21 @@
 import React from 'react';
 import axios from 'axios';
-import { Icon, Label, Menu, Table, Message } from 'semantic-ui-react';
+import { Icon, Label, Menu, Message } from 'semantic-ui-react';
 import emailjs from 'emailjs-com';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  InputLabel,
+  MenuItem,
+  FormHelperText,
+  FormControl,
+  Select,
+} from '@material-ui/core';
 
 //import htmlparser2 from 'htmlparser2';
 const htmlparser2 = require('htmlparser2');
@@ -132,7 +146,13 @@ class App extends React.Component {
   PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
   PROXY_URL2 = 'http://thingproxy.freeboard.io/';
 
-  state = { tankstellen2: [], alert: false, text: '' };
+  state = {
+    tankstellen2: [],
+    alert: false,
+    text: '',
+    sOperation: '',
+    sTankstelle: '',
+  };
 
   componentDidMount() {
     this.timer = setInterval(() => this.onPreisRequest(), 600000);
@@ -142,6 +162,63 @@ class App extends React.Component {
     this.timer = null; // here...
   }
 
+  handleOperation = (sTankstellePreis, sOpType, preises) => {
+    let diff = (preises.preisSenftl - preises[sTankstellePreis]).toFixed(2);
+
+    var textGreater =
+      ' Alerttt!!! The Preises of ' +
+      sTankstellePreis +
+      ' is ' +
+      Math.abs(diff) +
+      ' Cent' +
+      ' expensiver than ours... ';
+    var textLower =
+      ' Alerttt!!! The Preises of ' +
+      sTankstellePreis +
+      ' is ' +
+      diff +
+      ' Cent' +
+      ' cheaper than ours... ';
+    var textEqual =
+      ' Alerttt!!! The Preises of ' + sTankstellePreis + ' is ' + 'equal to us';
+
+    switch (sOpType) {
+      case 'greater':
+        if (preises.preisSenftl <= preises[sTankstellePreis]) {
+          this.setState({ alert: true });
+          this.setState({ text: textGreater });
+        }
+        break;
+      case 'lower':
+        if (preises.preisSenftl >= preises[sTankstellePreis]) {
+          this.setState({ alert: true });
+          this.setState({ text: textLower });
+        }
+        break;
+      case 'great&equal':
+        if (preises.preisSenftl === preises[sTankstellePreis]) {
+          this.setState({ alert: true });
+          this.setState({ text: textEqual });
+        }
+        if (preises.preisSenftl < preises[sTankstellePreis]) {
+          this.setState({ alert: true });
+          this.setState({ text: textGreater });
+        }
+        break;
+      case 'lower&equal':
+        if (preises.preisSenftl === preises[sTankstellePreis]) {
+          this.setState({ alert: true });
+          this.setState({ text: textEqual });
+        }
+        if (preises.preisSenftl > preises[sTankstellePreis]) {
+          this.setState({ alert: true });
+          this.setState({ text: textLower });
+        }
+        break;
+    }
+  };
+
+  setAlarm = (sOperation, sTankstelle) => {};
   onPreisRequest = async () => {
     this.setState({ tankstellen2: [] });
 
@@ -159,10 +236,15 @@ class App extends React.Component {
         parser.end();
         this.setState({ tankstellen2: Tankstellen });
         let tankstellenPreis = this.findTankstelle(Tankstellen);
-        let text = this.checkTankstellePreis(tankstellenPreis);
+        //let text = this.checkTankstellePreis(tankstellenPreis);
+        this.handleOperation(
+          this.state.sTankstelle,
+          this.state.sOperation,
+          tankstellenPreis
+        );
         console.log(tankstellenPreis);
-        this.sendEmail(text);
-        this.sendWhatsapp(text);
+        // this.sendEmail(text);
+        //this.sendWhatsapp(text);
         if (Tankstellen.length > 0) {
           Tankstellen = [];
           item = 0;
@@ -278,33 +360,78 @@ class App extends React.Component {
     this.setState({ text: Text });
     return Text;
   };
+  setOperation = (event) => {
+    this.setState({ sOperation: event.target.value });
+  };
 
+  setTankstelle = (event) => {
+    this.setState({ sTankstelle: event.target.value });
+  };
   render() {
     return (
       <div className="ui segment">
         <button className="ui button" onClick={this.onPreisRequest}>
           Click Here
         </button>
-        {this.state.tankstellen2.map((tankstelle) => {
-          return (
-            <Table celled>
-              <Table.Header>
-                <Table.HeaderCell>Tankstelle</Table.HeaderCell>
-                <Table.HeaderCell>Preis</Table.HeaderCell>
-                <Table.HeaderCell>Adress</Table.HeaderCell>
-                <Table.HeaderCell>Updated Time</Table.HeaderCell>
-              </Table.Header>
-              <Table.Body>
-                <Table.Row>
-                  <Table.Cell>{tankstelle.name}</Table.Cell>
-                  <Table.Cell>{tankstelle.preis}</Table.Cell>
-                  <Table.Cell>{tankstelle.adress}</Table.Cell>
-                  <Table.Cell>{tankstelle.updateTime}</Table.Cell>
-                </Table.Row>
-              </Table.Body>
-            </Table>
-          );
-        })}
+
+        <TableContainer component={Paper}>
+          <Table aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell>tankstelle</TableCell>
+                <TableCell align="right">preis</TableCell>
+                <TableCell align="right">adresse</TableCell>
+                <TableCell align="right">aktualisiert</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {this.state.tankstellen2.map((tankstelle) => {
+                return (
+                  <TableRow key={tankstelle.name}>
+                    <TableCell component="th" scope="row">
+                      {tankstelle.name}
+                    </TableCell>
+                    <TableCell align="right">{tankstelle.preis}</TableCell>
+                    <TableCell align="right">{tankstelle.adress}</TableCell>
+                    <TableCell align="right">{tankstelle.updateTime}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <FormControl style={{ midWidth: 120 }}>
+          <InputLabel id="demo-simple-select-label">
+            wähl die Operation
+          </InputLabel>
+          <Select
+            labelId="demo-simple-select-label"
+            id="demo-simple-select"
+            value={this.state.sOperation}
+            onChange={this.setOperation}
+          >
+            <MenuItem value={'greater'}>ist Niedriger als</MenuItem>
+            <MenuItem value={'lower'}>ist mehr als</MenuItem>
+            <MenuItem value={'lower&equal'}>ist gleich und mehr</MenuItem>
+            <MenuItem value={'great&equal'}>ist gleich und niedriger</MenuItem>
+          </Select>
+
+          <InputLabel id="demo-simple-select-label">
+            wähl die Tankstelle
+          </InputLabel>
+          <Select
+            labelId="demo-simple-select-label"
+            id="demo-simple-select"
+            value={this.state.sTankstelle}
+            onChange={this.setTankstelle}
+          >
+            <MenuItem value={'preisAvia'}>AVIA</MenuItem>
+            <MenuItem value={'preisAral'}>Aral Tankstelle</MenuItem>
+            <MenuItem value={'preisOMV'}>OMV</MenuItem>
+            <MenuItem value={'preisAgip'}>AGIP</MenuItem>
+          </Select>
+        </FormControl>
         <Message>
           <p style={{ color: 'red', fontSize: '20px' }}>{this.state.text}</p>
         </Message>
